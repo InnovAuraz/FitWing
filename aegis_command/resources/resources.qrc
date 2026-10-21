@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/">
+    <file>ai/recommender.py</file>
+    <file>theme/aegis.qss</file>
+  </qresource>
+</RCC>

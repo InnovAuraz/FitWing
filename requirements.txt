@@ -1,0 +1,288 @@
+=====================================================================================
+FITWING  -  3D ASSET REQUIREMENTS  (.glb files for  aegis_sim/resources/ )
+=====================================================================================
+You do NOT need any of these to run the project: every file below has a built-in
+procedural stand-in. Drop a file into  resources/  (next to FitWingSim.exe, in the
+"resources" folder) using EXACTLY the filename listed and it replaces the stand-in
+the next time the simulator starts. No code change, no rebuild.
+A missing or broken file is logged and silently replaced by the stand-in.
+
+12 files in total (4 gear/threat models + 8 scenery models):
+
+   drone_quad.glb        rifle.glb          launcher.glb        missile.glb
+   tree_pine.glb         tree_broadleaf.glb house_small.glb     apartment_block.glb
+   barn.glb              utility_pole.glb   lighthouse.glb      rock_cluster.glb
+
+Optional texture overrides (PNG) are described in section 4.
+
+
+-------------------------------------------------------------------------------------
+0. RULES THAT APPLY TO EVERY FILE
+-------------------------------------------------------------------------------------
+* Format ......... binary glTF 2.0 (.glb) with textures EMBEDDED. Triangles only.
+* Axes ........... glTF convention: +Y is UP, units are METRES.
+                   The "front" of a model (nose, muzzle, door) points to -Z.
+                   (Blender: model the front along +Y, export with "+Y Up";
+                   if in doubt open the file in a glTF viewer: front must face -Z.)
+* Scale .......... The simulator RE-SCALES every model so that its LONGEST bounding-box
+                   edge equals the "Size" given below, so proportions matter, absolute
+                   scale does not. Model at roughly that size anyway.
+* Origin/anchor .. described per file. The simulator re-centres the model itself
+                   (ground-centred or centre-anchored), except for rifle/launcher
+                   whose origin you must place yourself.
+* Mesh data ...... every mesh needs POSITION, NORMAL and TEXCOORD_0 (UV).
+                   TANGENT is optional: if missing, tangents/bitangents are computed
+                   from the UVs (so keep UVs un-mirrored where the normal map matters;
+                   mirrored UV islands are fine, they are handled by the tangent sign).
+* Materials ...... glTF metallic-roughness PBR:
+     - baseColorTexture  (sRGB)    + baseColorFactor
+     - normalTexture     (OpenGL / +Y-up "green up" convention, as glTF requires)
+     - metallicRoughnessTexture packed as  R = ambient occlusion, G = roughness,
+       B = metallic   (the standard "ORM" packing: put the AO map in the same texture
+       and reference it as occlusionTexture too)
+     - emissiveTexture / emissiveFactor are supported (lamps, windows, indicator LEDs)
+     - alphaMode MASK (and BLEND, treated as MASK with cutoff 0.4) is supported
+       -> use MASK for leaves, needles, fences. Set doubleSided for thin foliage cards.
+* Textures ....... power-of-two PNG/JPG, 1024x1024 typical, 2048 max. No texture
+                   atlas limits, several materials per model are fine.
+* Node names ..... every mesh node should have a meaningful name. These names are used:
+     rotor_*  / prop_*      -> spins around its LOCAL Y axis (drone only; see 1.1)
+     motor_*  / battery_* / engine_*  -> shown HOT (white) by the thermal imager
+     anything else          -> uses the model's base heat (listed per file)
+* Polygon budget . every file is instanced hundreds of times in the world, so keep the
+                   budgets below; they are upper limits, lower is better.
+* One draw-call friendly: <= 8 materials per file.
+
+Thermal view: the imager renders heat per node, not colour. You do not paint heat;
+you only name nodes (motor_/battery_/engine_ = hottest). Buildings/trees are cool
+and dim, which is intended.
+
+
+-------------------------------------------------------------------------------------
+1. GEAR AND THREAT MODELS
+-------------------------------------------------------------------------------------
+
+1.1  drone_quad.glb          THE THREAT  (seen at 20-2000 m, a few pixels to ~100 px)
+     Contents ....... a small quadcopter: central body + camera/gimbal pod under the
+                      nose, four arms, four motors, four rotor discs/blades, landing
+                      legs, a small battery pack on top or belly.
+     Size ........... 1.20 m (longest edge = motor-to-motor diagonal incl. blades).
+                      (Looks "big" for a real drone on purpose so it stays visible
+                      at distance; keep the 1.2 m proportions.)
+     Anchor ......... CENTRE of the bounding box is placed on the drone position.
+     Front .......... nose / camera toward -Z. Top toward +Y.
+     Node names ..... body, camera_pod, arm_fl/fr/bl/br, leg_*,
+                      motor_fl/fr/bl/br        (thermal-hot)
+                      battery                  (thermal-hot)
+                      rotor_fl/fr/bl/br        (SPIN: see below)
+     Rotors ......... each rotor_* node must have its ORIGIN AT THE ROTOR HUB (the
+                      motor axis) and the blades lying in the local XZ plane; the
+                      simulator spins the node about its own local Y axis. If the node
+                      origin is not at the hub the blades will orbit instead of spin.
+                      Two blades (or a flat disc card) per rotor. Counter-rotation is
+                      assigned automatically.
+     Colour ......... matte dark carbon / charcoal body (baseColor ~ #25282b, rough 0.55,
+                      metallic 0.1), light-grey motors (#8a8f94, metallic 0.8), dark
+                      semi-transparent blades (#101214), small lens glint on the
+                      camera (black glass, rough 0.05) and ONE small emissive LED on
+                      the belly: emissive #ff2a1a (red) - optional, the simulator also
+                      draws blinking LED sprites itself.
+     Textures ....... 1024x1024 (body+arms+legs atlas) + 512x512 for rotors.
+                      Normal map: carbon-fibre weave on arms, panel seams on body.
+     Base heat ...... 0.50 (motors/battery 1.0, rotors 0.62)
+     Polygons ....... <= 6 000 triangles.
+
+1.2  rifle.glb               FIRST-PERSON RIFLE  (large on screen, held bottom-right)
+     Contents ....... a modern bolt/semi-auto marksman rifle: stock, receiver, pistol
+                      grip, magazine, barrel with muzzle brake, handguard, top rail
+                      with a small scope or red-dot sight. Hands/arms NOT included.
+     Size ........... 1.05 m total length (stock butt to muzzle).
+     Origin ......... NOT re-centred. Put the origin at the middle of the receiver just
+                      above the pistol grip. The muzzle points to -Z, the butt stock
+                      extends toward +Z, the sights toward +Y.
+                      (In the default view the origin sits 0.17 m right, 0.21 m below
+                      and 0.50 m in front of the eye.)
+     Colour ......... gunmetal / matte black (#1d1f21 rough 0.45 metallic 0.9), worn
+                      edges brighter (#6c7075), stock in dark olive polymer
+                      (#3b4130 rough 0.7 metallic 0), optional wood handguard.
+     Textures ....... 2048x2048 single atlas: albedo + normal (knurling, screw heads,
+                      engraved markings, rail slots) + ORM (edge wear in roughness).
+     Base heat ...... 0.30
+     Polygons ....... <= 14 000 triangles (it fills much of the screen: add detail).
+
+1.3  launcher.glb            FIRST-PERSON MISSILE LAUNCHER (MANPADS-style tube)
+     Contents ....... shoulder-fired launch tube with front and rear seeker covers /
+                      open ends, sight unit on the left side, grip assembly with
+                      trigger guard, battery coolant unit under the tube, carrying
+                      strap loops. No missile inside (it is spawned separately).
+     Size ........... 1.25 m total length.
+     Origin ......... NOT re-centred. Origin at the grip assembly, tube axis along Z,
+                      muzzle (front) toward -Z, rear exit toward +Z, sight toward +Y.
+                      (In the default view the origin is 0.22 m right, 0.24 m below
+                      and 0.42 m in front of the eye.)
+     Colour ......... desaturated olive drab tube (#4a523a, rough 0.6, metallic 0.3),
+                      dark grey grip group (#2a2c2e), black rubber end caps, a small
+                      emissive status LED on the sight unit (#35ff6a emissive).
+     Textures ....... 2048x2048 atlas: stencilled warning text decals in albedo,
+                      scratch/wear normal + ORM.
+     Base heat ...... 0.30
+     Polygons ....... <= 12 000 triangles.
+
+1.4  missile.glb             FLYING MISSILE (seen from behind/side while it flies)
+     Contents ....... slim missile: seeker dome nose, body tube, four small canard
+                      fins near the nose, four larger tail fins, rocket nozzle at the
+                      rear. Exhaust flame/smoke is drawn by the simulator, do NOT model it.
+     Size ........... 1.40 m long (diameter about 0.07 m).
+     Anchor ......... CENTRE of the bounding box.
+     Front .......... nose toward -Z (the missile flies along -Z of its own model).
+     Node names ..... body, nose, fins_front, fins_tail, engine (thermal-hot nozzle).
+     Colour ......... white-grey body (#d7d9d6, rough 0.4, metallic 0.2), black nose
+                      dome (#16181a), olive or red stripe band (#8a1f1a), dark nozzle
+                      (#262626 metallic 0.7).
+     Textures ....... 1024x512 is enough (long, thin UV layout).
+     Base heat ...... 0.85 (very hot: motor burning)
+     Polygons ....... <= 3 000 triangles.
+
+
+-------------------------------------------------------------------------------------
+2. SCENERY MODELS  (all ground-centred: origin is moved to the centre of the footprint,
+                    lowest point at ground level, so any origin in the file is fine)
+-------------------------------------------------------------------------------------
+Every scenery model is placed many times with random yaw (rotation about Y) and
+slight size variation, so it must look good from every side and must have no
+"flat card" backs. Keep thermal base heat in mind: scenery is cool.
+
+2.1  tree_pine.glb          Size 13.0 m (height)   Heat 0.42   <= 5 000 tris
+     Conifer / pine: straight trunk, 6-9 layered drooping branch tiers.
+     Foliage as alpha-MASK needle cards (doubleSided) + a solid trunk.
+     Colour: trunk #4a3626 (rough 0.9), needles dark blue-green #1f3a2a with lighter
+     tips #3f6b45. Textures 1024: bark albedo+normal, needle-branch atlas with alpha.
+     Node names: trunk, foliage.
+
+2.2  tree_broadleaf.glb     Size 10.0 m (height)   Heat 0.42   <= 6 000 tris
+     Deciduous tree (oak/maple): thick trunk splitting into 3-5 limbs, a rounded
+     crown of leaf clusters (alpha-MASK cards, doubleSided).
+     Colour: trunk #50402f, leaves mid green #4f7a35 with yellower #8aa83f variation.
+     Textures 1024: bark albedo+normal, leaf cluster atlas with alpha.
+     Node names: trunk, crown.
+
+2.3  house_small.glb        Size 9.0 m (longest edge, normally the footprint width)
+                            Heat 0.48   <= 5 000 tris
+     Small rural/suburban house: rectangular body, pitched roof with overhang, chimney,
+     front door + porch step, 4-6 windows (glass as separate material, slightly
+     emissive warm #ffcf80 factor 0.35 so night scenes show lit windows).
+     Colour: plaster walls #cdbfa6 (rough 0.85), terracotta/dark-slate roof
+     (#8a4a36 or #3a3f45), wood door #5b3b26, window frames white #e7e7e0.
+     Textures 2048: wall plaster albedo+normal, roof tile albedo+normal, window atlas.
+     Front (door side) toward -Z.
+     Node names: walls, roof, chimney, door, windows (glass; the emissive ones).
+
+2.4  apartment_block.glb    Size 30.0 m (longest edge: height or length, whichever is
+                            larger; aim for 30 m tall x 22 m wide x 14 m deep)
+                            Heat 0.50   <= 9 000 tris
+     Urban concrete residential block, 8-9 storeys: regular window grid with
+     recessed windows + balconies, flat roof with parapet, rooftop stair housing,
+     AC units, antenna. Ground floor entrance with canopy.
+     Colour: concrete #8f918c / #a29c8e (rough 0.9), darker window recesses #2b3238,
+     balcony rails #3d4144. Glass: dark #1d2a33 rough 0.1 with an emissive factor
+     0.25 warm (#ffd28a) so some windows glow at night (use an emissive texture mask
+     with random lit windows ~30 %).
+     Textures 2048: facade albedo+normal+ORM (tileable window grid), roof 512.
+     Front toward -Z.
+     Node names: walls, windows, balconies, roof, equipment.
+
+2.5  barn.glb               Size 16.0 m (longest edge, the length of the barn)
+                            Heat 0.46   <= 4 000 tris
+     Farm barn: gambrel (two-slope) roof, big double sliding door in the front gable,
+     hayloft door above it, side lean-to optional.
+     Colour: weathered red board-and-batten #7a2a20 with white trim #d8d2c4, roof
+     galvanised grey #7c8184 (metallic 0.6, rough 0.5).
+     Textures 2048: plank albedo+normal (visible grain, nail heads), roof corrugation
+     normal map.
+     Front (big doors) toward -Z.
+     Node names: walls, roof, doors, trim.
+
+2.6  utility_pole.glb       Size 10.0 m (height)   Heat 0.40   <= 1 200 tris
+     Wooden power pole: tapered round trunk, one horizontal CROSS-ARM near the top,
+     three ceramic insulators on the cross-arm, a transformer can on some poles
+     (optional), a few climbing steps/bolts.
+     IMPORTANT: the cross-arm must run along the model's local X axis and be 2.0 m
+     long, centred on the pole; the simulator hangs the three power wires on it at
+     x = -1, 0, +1 m and height 9.35 m above ground. So put the three insulators
+     at exactly those positions.
+     Colour: creosote-dark wood #3d3128 (rough 0.9), grey ceramic #b9bdb8 (rough 0.3),
+     transformer #5c6358.
+     Textures 1024 (tall thin UV): wood grain albedo+normal, cracks in ORM.
+     Node names: pole, crossarm, insulators, transformer.
+
+2.7  lighthouse.glb         Size 32.0 m (height)   Heat 0.46   <= 6 000 tris
+     Coastal lighthouse: round tapering tower (about 6 m base diameter), gallery
+     balcony with railing, glass lantern room, small cap/roof with lightning rod,
+     small keeper's door at the base, a few small windows spiralling up.
+     Colour: white-washed tower #dcdcd4 with one or two red bands #a3302a,
+     black gallery rail #1d1f21, dark red or black roof #3a2020.
+     Lantern room glass: emissive warm #fff1b0, factor 4-6 (the simulator bloom makes
+     it glow at night). Name that node "lamp_room".
+     Textures 2048: tower albedo+normal (stone/plaster, tileable around), 512 detail
+     for gallery and lantern.
+     Node names: tower, gallery, lamp_room, roof, door.
+
+2.8  rock_cluster.glb       Size 6.0 m (longest edge)   Heat 0.40   <= 2 500 tris
+     A grouping of 3-5 boulders of different sizes sitting together (largest ~2.5 m
+     high). Chunky, angular erosion, no flat bottom needed (buried slightly).
+     Colour: grey granite #77777a with brown/green moss patches #5a6240 on top
+     faces, rough 0.95.
+     Textures 2048: rock albedo+strong normal map (cracks), ORM with AO in crevices.
+     Node names: rocks.
+
+
+-------------------------------------------------------------------------------------
+3. QUICK CHECKLIST BEFORE YOU DROP A FILE IN
+-------------------------------------------------------------------------------------
+ [ ] filename exactly as listed (lower-case, underscores, .glb)
+ [ ] +Y up, front toward -Z, metres, one scene, triangles only
+ [ ] every mesh has normals and UVs; materials are PBR metal-rough
+ [ ] ORM packing R=AO G=roughness B=metallic
+ [ ] rotor_* nodes of the drone have their pivot at the hub (spin axis = local Y)
+ [ ] utility_pole cross-arm along X with insulators at x = -1 / 0 / +1, y = 9.35
+ [ ] rifle / launcher origin at the grip, barrel toward -Z
+ [ ] triangle budget respected, <= 8 materials, textures <= 2048
+
+Start the simulator and read its console / log: each file prints either
+   "loaded <name>.glb (N parts, scaled xS to Z m)"      -> accepted
+   "<name>.glb not found; using built-in model"          -> not in resources/
+   "<name>.glb is invalid; using built-in model"         -> file present but unusable
+(the log is in the console window, or in the file the simulator was started from).
+
+
+-------------------------------------------------------------------------------------
+4. OPTIONAL: SURFACE TEXTURE OVERRIDES (PNG)   -   for everything the code builds itself
+-------------------------------------------------------------------------------------
+The control cab interior (walls, desk, locker, monitors frame), the terrain (grass,
+dirt, rock, sand, asphalt, water) and the built-in stand-in models are textured with
+procedural PBR textures that are generated at start-up. Each of them can be replaced
+by hand-made, TILEABLE, 1024x1024 or 2048x2048 PNG files placed in resources/:
+
+   tex_<kind>_albedo.png     sRGB colour
+   tex_<kind>_normal.png     tangent-space normal map, OpenGL convention (green = up)
+   tex_<kind>_orm.png        R = ambient occlusion, G = roughness, B = metallic
+
+   <kind> is one of:
+     concrete   cab walls/floor, building stand-ins
+     metal      painted metal: cab furniture, desk, locker, drone/launcher stand-ins
+     wood       cab table, poles, doors
+     asphalt    roads / urban ground
+     grass      rural & forest ground, field tiles
+     dirt       paths, crop rows, soil
+     rock       cliffs, rock props, coast stones
+     sand       beach / coastal ground
+     fabric     cab chair, sandbags, curtains
+     water      sea / puddle surface (normal map is scrolled for waves)
+     noise      generic detail noise (rarely worth replacing)
+
+Each of the three files is optional and independent (e.g. supply only
+tex_grass_albedo.png). Terrain textures should be seamless and have no strong
+low-frequency features (the shader already breaks up tiling).
+Colour guidance for the "metal" albedo: use a LIGHT grey (#bfc4c2) base. The
+simulator multiplies it by a paint tint (olive for the cab, steel-blue for the
+lockers), so a dark texture would end up almost black.

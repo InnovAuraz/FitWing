@@ -1,0 +1,70 @@
+build/
+build_release/
+dist/
+Output/
+
+# =========================
+# Python virtual environments
+# =========================
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# =========================
+# Python cache / generated
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# =========================
+# Python packaging
+# =========================
+*.egg-info/
+dist/
+*.egg
+.eggs/
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================
+# Python logs / temporary
+# =========================
+*.log
+*.tmp
+
+# =========================
+# Optional: local secrets
+# =========================
+.env
+.env.*
+
+# =========================
+# Model training artifacts
+# =========================
+# Uncomment these if models should NOT be committed:
+*.pt
+*.model
+*.csv
+*.json
